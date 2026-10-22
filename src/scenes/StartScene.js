@@ -15,7 +15,14 @@ export class StartScene {
 	contrast = 3;
 	sceneEnded = false;
 
-	endStartScene = () => {
+	endStartScene = (event) => {
+		if (
+			event?.target?.closest('#onlineLobby') ||
+			event?.target?.closest('#videoCall') ||
+			event?.target?.closest('.interactive-ui')
+		) {
+			return;
+		}
 		this.changeScene(BattleScene);
 		window.removeEventListener('click', this.endStartScene);
 	};

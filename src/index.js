@@ -1,5 +1,8 @@
 import { StreetFighterGame } from './StreetFighterGame.js';
+import { initOnlineLobby } from './ui/OnlineLobby.js';
 
 window.onload = () => {
-	new StreetFighterGame().start();
+	window.gameInstance = new StreetFighterGame();
+	window.gameInstance.start();
+	window.onlineLobby = initOnlineLobby();
 };

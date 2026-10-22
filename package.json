@@ -1,0 +1,20 @@
+{
+  "name": "streetfighter-online",
+  "version": "1.0.0",
+  "description": "Street Fighter Online - Vanilla JS + HTML5 Canvas with WebRTC & Socket.IO Multiplayer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "npm --prefix server run dev",
+    "server": "npm --prefix server start",
+    "install:all": "npm install && npm --prefix server install"
+  },
+  "dependencies": {
+    "express": "^5.3.0",
+    "socket.io": "^4.8.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}

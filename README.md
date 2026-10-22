@@ -316,18 +316,32 @@ During the development of the game, the following websites and applications were
 4. **Youtube Referene** (https://www.youtube.com/@shezzor):
     - Huge shoutout to @shezzor whose youtube playlist for this js development to which i refered to for learning.  
 
-By leveraging these resources, the game development process was enriched with high-quality graphics and audio elements, contributing to the overall immersion and enjoyment of the gaming experience.
+## Online Multiplayer (WebRTC + Socket.IO)
 
-## Interesting Community Forks to checkout
-1. @vm10k - https://github.com/vm10k/SFA-Multiplayer
+This feature adds peer-to-peer real-time online multiplayer to Street Fighter:
+- **Strict Player Input Isolation**: User A can only ever move and attack Player 1. User B can only ever move and attack Player 2. All incoming network payloads are strictly validated against session tokens and assigned roles (`player-1` / `player-2`). Unauthenticated attempts or payload tampering are rejected.
+- **Mobile Touch Controls**: Dual-zone touch overlay featuring a virtual radial directional D-pad on the left and a 6-button arcade cluster (`LP`, `MP`, `HP`, `LK`, `MK`, `HK`, `HADOUKEN`, `BLOCK`) on the right with Pointer Events and pointer capture.
+- **Full-Screen Canvas**: Scales dynamically with `100vw × 100dvh` in landscape mode with automatic device rotation reminder in portrait mode.
+- **Microphone-Only Voice Chat**: Built-in peer-to-peer voice communication with simple one-click mic toggle (`🎙️ Mic: ON / OFF`) and zero video distractions.
+- **No Background Music**: Background stage music is silenced while all authentic combat and attack sound effects remain intact.
 
-## Contributing
+### Running Locally
+```bash
+# Install dependencies
+npm run install:all
 
-If you would like to contribute to the project, feel free to open an issue or submit a pull request. Any contributions are welcome!
+# Start signaling server and client
+npm start
+```
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## License
-
-This project is licensed under the [MIT License](LICENSE).
+### Multiplayer Testing Guide
+1. Open [http://localhost:3000](http://localhost:3000) in **Browser Window A**.
+2. Click **Create Room**. A unique room code will be generated (e.g. `4CF66FB28F`).
+3. Open [http://localhost:3000](http://localhost:3000) in **Browser Window B** (or another device on the same network).
+4. Enter the room code into the room input and click **Join**.
+5. The WebRTC peer data channel opens instantly, transitioning both players into the live battle.
+6. Window A controls **Player 1 (Ryu)** and Window B controls **Player 2 (Ken)**.
 
 ---
 

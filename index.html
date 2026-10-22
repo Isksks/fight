@@ -3,83 +3,211 @@
 	<head>
 		<link rel="icon" href="./public/images/vsLogo.png" />
 		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Street Fighter by Mayank Jain</title>
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+		/>
+		<title>Street Fighter Online — Full-Screen WebRTC Multiplayer</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Press+Start+2P&display=swap"
+			rel="stylesheet"
+		/>
 		<link rel="stylesheet" href="src/style.css" />
+		<!-- Socket.IO client library served by the backend -->
+		<script src="/socket.io/socket.io.js"></script>
 		<script type="module" src="src/index.js"></script>
 	</head>
 
 	<body>
-		<main>
-			<canvas width="382px" height="224px"></canvas>
-		</main>
-		<audio
-			id="kensTheme"
-			src="./public/sounds/kens-theme.ogg"
-			preload="auto"
-			loop
-		></audio>
-		<audio
-			id="sound-fighter-land"
-			src="./public/sounds/land.ogg"
-			preload="auto"
-		></audio>
-		<audio
-			id="sound-fighter-light-kick-hit"
-			src="./public/sounds/light-kick-hit.ogg"
-			preload="auto"
-		></audio>
-		<audio
-			id="sound-fighter-medium-kick-hit"
-			src="./public/sounds/medium-kick-hit.ogg"
-			preload="auto"
-		></audio>
-		<audio
-			id="sound-fighter-heavy-kick-hit"
-			src="./public/sounds/heavy-kick-hit.ogg"
-			preload="auto"
-		></audio>
-		<audio
-			id="sound-fighter-light-attack"
-			src="./public/sounds/light-attack.ogg"
-			preload="auto"
-		></audio>
-		<audio
-			id="sound-fighter-medium-attack"
-			src="./public/sounds/medium-attack.ogg"
-			preload="auto"
-		></audio>
-		<audio
-			id="sound-fighter-heavy-attack"
-			src="./public/sounds/heavy-attack.ogg"
-			preload="auto"
-		></audio>
-		<audio
-			id="sound-fighter-light-punch-hit"
-			src="./public/sounds/light-punch-hit.ogg"
-			preload="auto"
-		></audio>
-		<audio
-			id="sound-fighter-medium-punch-hit"
-			src="./public/sounds/medium-punch-hit.ogg"
-			preload="auto"
-		></audio>
-		<audio
-			id="sound-fighter-heavy-punch-hit"
-			src="./public/sounds/heavy-punch-hit.ogg"
-			preload="auto"
-		></audio>
-		<audio
-			id="sound-ken-hadouken"
-			src="./public/sounds/hadouken.ogg"
-			preload="auto"
-		></audio>
-		<audio
-			id="sound-ryu-hadouken"
-			src="./public/sounds/hadouken.ogg"
-			preload="auto"
-		></audio>
+		<!-- Main Fullscreen Arcade & UI Container -->
+		<div class="arcade-container">
+			<!-- Top Online Lobby Bar (collapses during active match) -->
+			<header id="onlineLobby" class="online-lobby interactive-ui">
+				<div class="lobby-brand">
+					<span class="arcade-logo">SF II</span>
+					<span class="online-pill">ONLINE</span>
+				</div>
 
+				<div class="lobby-actions">
+					<button id="createRoom" class="btn btn-primary" title="Create private multiplayer match">
+						<span class="btn-icon">⚡</span> Create Room
+					</button>
+
+					<div class="room-input-group">
+						<input
+							id="roomCode"
+							type="text"
+							placeholder="ROOM CODE"
+							maxlength="10"
+							autocomplete="off"
+							spellcheck="false"
+						/>
+						<button id="joinRoom" class="btn btn-secondary">
+							Join
+						</button>
+					</div>
+
+					<button id="copyInvite" class="btn btn-accent" hidden title="Copy invitation link">
+						📋 Copy Link
+					</button>
+				</div>
+
+				<div class="lobby-right">
+					<div class="status-badge">
+						<span class="status-dot"></span>
+						<p id="roomStatus" aria-live="polite">Connecting to server...</p>
+					</div>
+					<button id="toggleAudio" class="btn btn-ghost" title="Toggle microphone voice chat">
+						🎙️ Mic: OFF
+					</button>
+					<button id="touchToggleBtn" class="btn btn-ghost" title="Toggle mobile touch controls">
+						📱 Touch
+					</button>
+					<button id="fullscreenToggle" class="btn btn-ghost" title="Toggle full-screen mode">
+						⛶ Fullscreen
+					</button>
+					<button id="controlsGuideBtn" class="btn btn-ghost" title="View keyboard controls guide">
+						🎮 Controls
+					</button>
+				</div>
+			</header>
+
+			<!-- Floating Match HUD Bar (shows during active battle) -->
+			<div id="matchHud" class="match-hud interactive-ui" hidden>
+				<div class="hud-menu-wrapper">
+					<button id="menuBtn" class="hud-btn" title="Match Menu">
+						☰ Menu
+					</button>
+					<div id="matchMenuDropdown" class="match-menu-dropdown" hidden>
+						<button id="leaveMatchBtn" class="btn-leave-match" type="button">
+							🚪 Leave Match
+						</button>
+					</div>
+				</div>
+				<div class="hud-status-pill">
+					<span class="hud-live-dot"></span>
+					<span id="matchStatusText">BATTLE LIVE</span>
+				</div>
+				<div class="hud-ping-pill" title="Round-trip latency">
+					<span>PING:</span>
+					<span id="matchPingBadge">-- ms</span>
+				</div>
+				<button id="toggleAudioHud" class="hud-btn" title="Toggle microphone voice chat">
+					🎙️ Mic: OFF
+				</button>
+				<button id="touchToggleBtnHud" class="hud-btn" title="Toggle virtual touch controls">
+					📱 Touch
+				</button>
+				<button id="fullscreenToggleHud" class="hud-btn" title="Toggle full-screen">
+					⛶ Fullscreen
+				</button>
+			</div>
+
+			<!-- Full-Screen Canvas Fighting Arena -->
+			<main class="canvas-wrapper">
+				<canvas width="382px" height="224px"></canvas>
+			</main>
+
+			<!-- Mobile Virtual Touch Controls Overlay -->
+			<div id="touchControlsContainer" class="touch-controls-container" hidden>
+				<!-- Left: Radial Virtual D-Pad -->
+				<div class="touch-pad-zone touch-left">
+					<div id="virtualDpad" class="virtual-dpad">
+						<div id="dpadBtn-up" class="dpad-dir dpad-up">▲</div>
+						<div id="dpadBtn-left" class="dpad-dir dpad-left">◀</div>
+						<div id="dpadCenter" class="dpad-center"></div>
+						<div id="dpadBtn-right" class="dpad-dir dpad-right">▶</div>
+						<div id="dpadBtn-down" class="dpad-dir dpad-down">▼</div>
+					</div>
+				</div>
+
+				<!-- Right: Combat Action Buttons Cluster -->
+				<div class="touch-pad-zone touch-right">
+					<div class="touch-utility-row">
+						<button id="btnSpecial" class="touch-btn touch-btn-special" type="button">
+							HADOUKEN
+						</button>
+						<button id="btnBlock" class="touch-btn touch-btn-block" type="button">
+							BLOCK
+						</button>
+					</div>
+					<div class="touch-arcade-cluster">
+						<div class="cluster-row punches-row">
+							<button id="btnLp" class="touch-btn touch-punch lp" type="button">LP</button>
+							<button id="btnMp" class="touch-btn touch-punch mp" type="button">MP</button>
+							<button id="btnHp" class="touch-btn touch-punch hp" type="button">HP</button>
+						</div>
+						<div class="cluster-row kicks-row">
+							<button id="btnLk" class="touch-btn touch-kick lk" type="button">LK</button>
+							<button id="btnMk" class="touch-btn touch-kick mk" type="button">MK</button>
+							<button id="btnHk" class="touch-btn touch-kick hk" type="button">HK</button>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Invisible Audio element for remote player's voice -->
+			<audio id="remoteAudio" autoplay playsinline></audio>
+		</div>
+
+		<!-- Mobile Rotate Device Friendly Reminder -->
+		<div id="rotateDeviceOverlay" class="rotate-device-overlay">
+			<div class="rotate-device-content">
+				<div class="phone-rotate-icon">📱 ↷</div>
+				<h2>ROTATE YOUR DEVICE</h2>
+				<p>Please orient your device to landscape for the full-screen arcade combat experience.</p>
+			</div>
+		</div>
+
+		<!-- Keyboard Controls Modal Guide -->
+		<div id="controlsModal" class="modal-backdrop interactive-ui" hidden>
+			<div class="modal-box">
+				<div class="modal-header">
+					<h3>COMBAT CONTROLS</h3>
+					<button id="closeControlsBtn" class="btn-close">&times;</button>
+				</div>
+				<div class="modal-content">
+					<div class="control-col">
+						<h4>PLAYER 1 (RYU)</h4>
+						<ul>
+							<li><kbd>W</kbd> Jump &bull; <kbd>S</kbd> Crouch</li>
+							<li><kbd>A</kbd> Move Left &bull; <kbd>D</kbd> Move Right</li>
+							<li><kbd>Q</kbd> Light Punch &bull; <kbd>E</kbd> Med Punch &bull; <kbd>R</kbd> Heavy Punch</li>
+							<li><kbd>F</kbd> Light Kick &bull; <kbd>V</kbd> Med Kick &bull; <kbd>G</kbd> Heavy Kick</li>
+							<li><strong>Hadouken:</strong> <kbd>S</kbd> &rarr; <kbd>S+D</kbd> &rarr; <kbd>D</kbd> + Punch</li>
+						</ul>
+					</div>
+					<div class="control-col">
+						<h4>PLAYER 2 (KEN)</h4>
+						<ul>
+							<li><kbd>&uarr;</kbd> Jump &bull; <kbd>&darr;</kbd> Crouch</li>
+							<li><kbd>&larr;</kbd> Move Left &bull; <kbd>&rarr;</kbd> Move Right</li>
+							<li><kbd>/</kbd> Light Punch &bull; <kbd>Ctrl</kbd> Med Punch &bull; <kbd>.</kbd> Heavy Punch</li>
+							<li><kbd>Shift</kbd> Light Kick &bull; <kbd>'</kbd> Med Kick &bull; <kbd>Enter</kbd> Heavy Kick</li>
+							<li><em>(In Online mode, Guest can also use WASD keyboard or Mobile Touch!)</em></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Combat Sound Effects (Background Music Removed per user preference) -->
+		<audio id="sound-fighter-land" src="./public/sounds/land.ogg" preload="auto"></audio>
+		<audio id="sound-fighter-light-kick-hit" src="./public/sounds/light-kick-hit.ogg" preload="auto"></audio>
+		<audio id="sound-fighter-medium-kick-hit" src="./public/sounds/medium-kick-hit.ogg" preload="auto"></audio>
+		<audio id="sound-fighter-heavy-kick-hit" src="./public/sounds/heavy-kick-hit.ogg" preload="auto"></audio>
+		<audio id="sound-fighter-light-attack" src="./public/sounds/light-attack.ogg" preload="auto"></audio>
+		<audio id="sound-fighter-medium-attack" src="./public/sounds/medium-attack.ogg" preload="auto"></audio>
+		<audio id="sound-fighter-heavy-attack" src="./public/sounds/heavy-attack.ogg" preload="auto"></audio>
+		<audio id="sound-fighter-light-punch-hit" src="./public/sounds/light-punch-hit.ogg" preload="auto"></audio>
+		<audio id="sound-fighter-medium-punch-hit" src="./public/sounds/medium-punch-hit.ogg" preload="auto"></audio>
+		<audio id="sound-fighter-heavy-punch-hit" src="./public/sounds/heavy-punch-hit.ogg" preload="auto"></audio>
+		<audio id="sound-ken-hadouken" src="./public/sounds/hadouken.ogg" preload="auto"></audio>
+		<audio id="sound-ryu-hadouken" src="./public/sounds/hadouken.ogg" preload="auto"></audio>
+
+		<!-- Image Spritesheets -->
 		<img id="KenStage" src="public/images/kenstage.png" alt="kenstage" />
 		<img id="hud" src="public/images/hud.png" alt="HUD" />
 		<img id="KenImage" src="./public/images/ken.png" />
@@ -89,5 +217,17 @@
 		<img id="Controls" src="./public/images/Controls.png" />
 		<img id="Logo" src="./public/images/logo.png" />
 		<img id="Winner" src="./public/images/winnerText.png" />
+
+		<script>
+			// Wire up controls modal guide toggle
+			const guideBtn = document.getElementById('controlsGuideBtn');
+			const modal = document.getElementById('controlsModal');
+			const closeBtn = document.getElementById('closeControlsBtn');
+			guideBtn?.addEventListener('click', () => { modal.hidden = false; });
+			closeBtn?.addEventListener('click', () => { modal.hidden = true; });
+			modal?.addEventListener('click', (e) => {
+				if (e.target === modal) modal.hidden = true;
+			});
+		</script>
 	</body>
 </html>

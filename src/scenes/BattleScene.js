@@ -136,10 +136,10 @@ export class BattleScene {
 		this.shadows = this.fighters.map((fighter) => new Shadow(fighter));
 	};
 
-	goToStartScene = () => {
+	goToNextRound = () => {
 		setTimeout(() => {
-			this.changeScene(StartScene);
-		}, 6000);
+			this.changeScene(BattleScene);
+		}, 3000);
 	};
 
 	drawWinnerText = (context, id) => {
@@ -156,7 +156,7 @@ export class BattleScene {
 			this.fighters[0].changeState(FighterState.KO, time);
 			this.winnerId = 1;
 		}
-		this.goToStartScene();
+		this.goToNextRound();
 	};
 
 	updateOverlays = (time) => {
@@ -169,7 +169,7 @@ export class BattleScene {
 				this.fighters[index].opponent.victory = true;
 				this.winnerId = 1 - index;
 				this.battleEnded = true;
-				this.goToStartScene();
+				this.goToNextRound();
 			}
 		});
 	};

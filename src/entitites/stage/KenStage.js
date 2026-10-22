@@ -199,7 +199,7 @@ export class KenStage {
 	};
 
 	constructor() {
-		playSound(this.backgroundMusic, 0.2);
+		// Background music removed per user preference; combat sound effects remain active
 	}
 
 	drawFrame = (context, frameKey, x, y, direction = 1) => {
