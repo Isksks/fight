@@ -33,6 +33,19 @@ export function initOnlineLobby() {
 	const fsBtnHud = document.querySelector('#fullscreenToggleHud');
 	const touchToggleBtn = document.querySelector('#touchToggleBtn');
 	const touchToggleBtnHud = document.querySelector('#touchToggleBtnHud');
+	const onlineLobby = document.querySelector('#onlineLobby');
+	const collapseLobbyBtn = document.querySelector('#collapseLobbyBtn');
+	const expandLobbyBtn = document.querySelector('#expandLobbyBtn');
+
+	collapseLobbyBtn?.addEventListener('click', () => {
+		onlineLobby?.classList.add('collapsed');
+		if (expandLobbyBtn) expandLobbyBtn.hidden = false;
+	});
+
+	expandLobbyBtn?.addEventListener('click', () => {
+		onlineLobby?.classList.remove('collapsed');
+		if (expandLobbyBtn) expandLobbyBtn.hidden = true;
+	});
 
 	// Initialize mobile touch controls
 	const touchControls = new TouchControls();

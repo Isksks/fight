@@ -60,8 +60,12 @@ html {
 	overflow: hidden;
 }
 
-/* Top Online Lobby Header */
+/* Top Online Lobby Header (floating overlay that does not squish the canvas) */
 .online-lobby {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
@@ -69,7 +73,7 @@ html {
 	padding-top: max(8px, env(safe-area-inset-top));
 	padding-left: max(18px, env(safe-area-inset-left));
 	padding-right: max(18px, env(safe-area-inset-right));
-	background: var(--bg-panel);
+	background: rgba(12, 16, 26, 0.85);
 	backdrop-filter: blur(16px);
 	-webkit-backdrop-filter: blur(16px);
 	border-bottom: 1px solid var(--border-glow);
@@ -80,15 +84,50 @@ html {
 	transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
 }
 
-/* When match is active, collapse lobby into compact mode */
-.arcade-container.in-match .online-lobby {
+/* When match is active or header is collapsed */
+.arcade-container.in-match .online-lobby,
+.online-lobby.collapsed {
 	transform: translateY(-100%);
-	position: absolute;
-	top: 0;
-	left: 0;
-	right: 0;
 	pointer-events: none;
 	opacity: 0;
+}
+
+/* Floating Restore Button for Mobile (when lobby is collapsed) */
+.mini-lobby-pill {
+	position: absolute;
+	top: max(8px, env(safe-area-inset-top));
+	left: max(12px, env(safe-area-inset-left));
+	z-index: 52;
+	background: rgba(14, 18, 28, 0.85);
+	backdrop-filter: blur(12px);
+	-webkit-backdrop-filter: blur(12px);
+	border: 1px solid var(--border-glow);
+	color: var(--accent-gold);
+	font-family: var(--font-arcade);
+	font-size: 10px;
+	padding: 5px 12px;
+	border-radius: 20px;
+	cursor: pointer;
+	box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	transition: all 0.2s ease;
+}
+
+.mini-lobby-pill:hover,
+.mini-lobby-pill:active {
+	background: rgba(25, 32, 50, 0.95);
+	border-color: var(--accent-cyan);
+}
+
+.mini-lobby-pill[hidden] {
+	display: none !important;
+}
+
+.lobby-collapse-btn {
+	padding: 4px 8px !important;
+	font-size: 9px !important;
 }
 
 .lobby-brand {
@@ -433,15 +472,16 @@ html {
 
 /* Full-Screen Canvas Arena */
 .canvas-wrapper {
-	flex: 1;
+	position: absolute;
+	inset: 0;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	position: relative;
 	overflow: hidden;
 	width: 100vw;
 	height: 100vh;
 	height: 100dvh;
+	z-index: 10;
 }
 
 canvas {
@@ -699,37 +739,128 @@ canvas {
 	}
 }
 
-/* Responsive tweaks for smaller screens */
-@media (max-width: 768px) {
+/* Responsive tweaks for Mobile Landscape / Small Heights (Phone in Landscape) */
+@media (max-height: 520px), (max-width: 950px) and (orientation: landscape) {
 	.online-lobby {
-		padding: 6px 12px;
+		padding: 4px 10px;
+		padding-top: max(4px, env(safe-area-inset-top));
+		padding-left: max(10px, env(safe-area-inset-left));
+		padding-right: max(10px, env(safe-area-inset-right));
 		gap: 6px;
+		max-height: 42px;
+		overflow-x: auto;
+		overflow-y: hidden;
+		white-space: nowrap;
+		scrollbar-width: none;
 	}
+
+	.online-lobby::-webkit-scrollbar {
+		display: none;
+	}
+
 	.arcade-logo {
-		font-size: 13px;
-	}
-	.btn {
 		font-size: 11px;
-		padding: 5px 10px;
 	}
+
+	.online-pill {
+		display: none;
+	}
+
+	.lobby-actions {
+		gap: 5px;
+	}
+
+	.btn {
+		font-size: 10px;
+		padding: 4px 8px;
+		height: 28px;
+		border-radius: 5px;
+	}
+
+	.room-input-group {
+		height: 28px;
+	}
+
 	.room-input-group input {
-		width: 100px;
+		width: 76px;
 		font-size: 9px;
-		padding: 6px 8px;
+		padding: 4px 6px;
 	}
-	.video-panel {
-		width: 220px;
-		right: 8px;
-		bottom: 8px;
+
+	.lobby-right {
+		gap: 5px;
 	}
-	.touch-btn {
-		width: 44px;
-		height: 44px;
-		font-size: 9px;
+
+	.status-badge {
+		padding: 3px 8px;
 	}
+
+	.status-dot {
+		width: 6px;
+		height: 6px;
+	}
+
+	.status-msg {
+		font-size: 9.5px;
+		max-width: 200px;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	#controlsGuideBtn {
+		display: none;
+	}
+
+	/* Touch Controls Ergonomic Layout for Mobile Landscape */
+	.touch-controls-container {
+		padding: 6px 12px;
+		padding-left: max(12px, env(safe-area-inset-left));
+		padding-right: max(12px, env(safe-area-inset-right));
+		padding-bottom: max(6px, env(safe-area-inset-bottom));
+	}
+
 	.virtual-dpad {
-		width: 120px;
-		height: 120px;
+		width: 114px;
+		height: 114px;
+		background: rgba(14, 18, 30, 0.45);
+		border-width: 1.5px;
+	}
+
+	.dpad-center {
+		width: 34px;
+		height: 34px;
+	}
+
+	.dpad-dir {
+		font-size: 11px;
+	}
+
+	.touch-btn {
+		width: 38px;
+		height: 38px;
+		font-size: 8px;
+		opacity: 0.85;
+	}
+
+	.cluster-row {
+		gap: 5px;
+	}
+
+	.touch-arcade-cluster {
+		gap: 5px;
+	}
+
+	.touch-utility-row {
+		gap: 6px;
+		margin-bottom: 3px;
+	}
+
+	.touch-btn-special,
+	.touch-btn-block {
+		height: 26px;
+		padding: 0 8px;
+		font-size: 7.5px;
 	}
 }
 
