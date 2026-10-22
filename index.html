@@ -15,8 +15,10 @@
 			rel="stylesheet"
 		/>
 		<link rel="stylesheet" href="src/style.css" />
-		<!-- Socket.IO client library (loaded from CDN for GitHub Pages & static hosting compatibility) -->
+		<!-- Socket.IO client library (loaded from CDN for backend server compatibility) -->
 		<script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+		<!-- PeerJS client library (for 100% serverless P2P matchmaking on GitHub Pages) -->
+		<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 		<script type="module" src="src/index.js"></script>
 	</head>
 

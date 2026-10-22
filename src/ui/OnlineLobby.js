@@ -297,9 +297,13 @@ export function initOnlineLobby() {
 		}
 	});
 
-	// Socket.io signaling events
-	signaling.on('connect', () => {
-		setStatus('Connected to room server. Ready for multiplayer.');
+	// Signaling events (Serverless PeerJS or Socket.IO)
+	signaling.on('connect', (data) => {
+		if (data?.mode === 'peerjs') {
+			setStatus('Serverless P2P ready! Create or join a room.');
+		} else {
+			setStatus('Connected to room server. Ready for multiplayer.');
+		}
 	});
 
 	signaling.on('disconnect', () => {
