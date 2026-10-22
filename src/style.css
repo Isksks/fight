@@ -692,8 +692,8 @@ canvas {
 	line-height: 1.5;
 }
 
-/* Display rotate overlay ONLY on mobile in portrait */
-@media (max-width: 900px) and (orientation: portrait) {
+/* Display rotate overlay ONLY on real mobile devices in portrait */
+@media (max-width: 900px) and (orientation: portrait) and (pointer: coarse) {
 	.rotate-device-overlay {
 		display: flex !important;
 	}

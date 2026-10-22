@@ -15,8 +15,8 @@
 			rel="stylesheet"
 		/>
 		<link rel="stylesheet" href="src/style.css" />
-		<!-- Socket.IO client library served by the backend -->
-		<script src="/socket.io/socket.io.js"></script>
+		<!-- Socket.IO client library (loaded from CDN for GitHub Pages & static hosting compatibility) -->
+		<script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
 		<script type="module" src="src/index.js"></script>
 	</head>
 
@@ -158,6 +158,9 @@
 				<div class="phone-rotate-icon">📱 ↷</div>
 				<h2>ROTATE YOUR DEVICE</h2>
 				<p>Please orient your device to landscape for the full-screen arcade combat experience.</p>
+				<button id="dismissRotateBtn" class="btn btn-ghost" type="button" style="margin-top: 14px; font-size: 11px;">
+					Continue Anyway
+				</button>
 			</div>
 		</div>
 
@@ -210,7 +213,7 @@
 		<!-- Image Spritesheets -->
 		<img id="KenStage" src="public/images/kenstage.png" alt="kenstage" />
 		<img id="hud" src="public/images/hud.png" alt="HUD" />
-		<img id="KenImage" src="./public/images/ken.png" />
+		<img id="KenImage" src="./public/images/Ken.png" />
 		<img id="RyuImage" src="public/images/Ryu.png" />
 		<img id="ShadowImage" src="./public/images/shadow.png" />
 		<img id="Decals" src="./public/images/decals.png" />
@@ -227,6 +230,13 @@
 			closeBtn?.addEventListener('click', () => { modal.hidden = true; });
 			modal?.addEventListener('click', (e) => {
 				if (e.target === modal) modal.hidden = true;
+			});
+
+			// Dismiss rotate overlay if clicked
+			const rotateOverlay = document.getElementById('rotateDeviceOverlay');
+			const dismissRotateBtn = document.getElementById('dismissRotateBtn');
+			dismissRotateBtn?.addEventListener('click', () => {
+				if (rotateOverlay) rotateOverlay.style.display = 'none';
 			});
 		</script>
 	</body>

@@ -20,7 +20,21 @@ export class SignalingClient {
 			return;
 		}
 
-		this.socket = window.io();
+		// Support custom signaling server URL (e.g., deployed on Render/Railway/Koyeb)
+		const customServer = window.SIGNALING_SERVER_URL || localStorage.getItem('sf2_signaling_url');
+		const isGitHubPages = window.location.hostname.endsWith('github.io');
+
+		if (customServer) {
+			this.socket = window.io(customServer);
+		} else if (isGitHubPages) {
+			console.info('Running on GitHub Pages. To enable online multiplayer, set window.SIGNALING_SERVER_URL or deploy server/ to Render/Railway.');
+			this.socket = window.io({ autoConnect: false });
+			setTimeout(() => {
+				this.emitEvent('error', new Error('Online multiplayer requires a Node.js signaling server (e.g. Render/Railway).'));
+			}, 200);
+		} else {
+			this.socket = window.io();
+		}
 
 		this.socket.on('connect', () => {
 			this.emitEvent('connect');

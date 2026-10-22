@@ -283,7 +283,7 @@ export function initOnlineLobby() {
 
 	copyBtn?.addEventListener('click', async () => {
 		if (!roomCode) return;
-		const invite = `${location.origin}/?room=${roomCode}`;
+		const invite = `${location.origin}${location.pathname}?room=${roomCode}`;
 		try {
 			await navigator.clipboard.writeText(invite);
 			const prevText = copyBtn.textContent;
