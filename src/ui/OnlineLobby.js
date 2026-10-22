@@ -248,9 +248,10 @@ export function initOnlineLobby() {
 			sessionToken = result.sessionToken;
 			codeInput.value = roomCode;
 
+			history.replaceState(null, '', `${location.pathname}?room=${roomCode}`);
 			if (copyBtn) copyBtn.hidden = false;
 			voicePanel.show();
-			setStatus(`Room ${roomCode} created. Share code with opponent!`);
+			setStatus(`Room ${roomCode} created. Share code or link with opponent!`);
 			startPeer();
 		} catch (err) {
 			setStatus(`Failed to create room: ${err.message}`, true);
@@ -261,6 +262,11 @@ export function initOnlineLobby() {
 		const code = codeInput.value.trim().toUpperCase();
 		if (!code) {
 			setStatus('Please enter a room code', true);
+			return;
+		}
+
+		if (playerNumber === 1 && code === roomCode) {
+			setStatus(`You are hosting Room ${roomCode}. Share the link with Player 2 to join!`);
 			return;
 		}
 

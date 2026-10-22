@@ -23,23 +23,20 @@ export class SignalingClient {
 	}
 
 	connect() {
-		const isLocalhost =
-			window.location.hostname === 'localhost' ||
-			window.location.hostname === '127.0.0.1';
 		const customServer =
 			window.SIGNALING_SERVER_URL || localStorage.getItem('sf2_signaling_url');
 
-		// If a custom backend or localhost is present and Socket.IO is loaded, attempt socket connection
-		if ((customServer || isLocalhost) && typeof window.io === 'function') {
+		// If a custom backend is explicitly provided, use Socket.IO
+		if (customServer && typeof window.io === 'function') {
 			try {
-				this.socket = window.io(customServer || undefined, {
+				this.socket = window.io(customServer, {
 					reconnectionAttempts: 2,
 					timeout: 3000,
 				});
 
 				this.socket.on('connect', () => {
 					this.mode = 'socket';
-					console.log('[Signaling] Connected to Socket.IO backend');
+					console.log('[Signaling] Connected to custom Socket.IO backend');
 					this.emitEvent('connect', { mode: 'socket' });
 				});
 
@@ -48,7 +45,7 @@ export class SignalingClient {
 				});
 
 				this.socket.on('connect_error', (error) => {
-					console.warn('[Signaling] Socket.IO server unavailable, switching to serverless PeerJS:', error.message);
+					console.warn('[Signaling] Custom server unavailable, falling back to serverless PeerJS:', error.message);
 					this.switchToPeerJS();
 				});
 
@@ -70,7 +67,7 @@ export class SignalingClient {
 			}
 		}
 
-		// Default for GitHub Pages and static hosts: Serverless PeerJS
+		// Universal Serverless P2P (PeerJS free cloud)
 		this.switchToPeerJS();
 	}
 
