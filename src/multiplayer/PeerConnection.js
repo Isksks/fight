@@ -15,12 +15,20 @@ export class PeerConnection {
 		this.onChannelStateChange = onChannelStateChange;
 
 		this.localAudioStream = null;
-		this.pendingIce = [];
-		this.remoteDescriptionSet = false;
+		this.activeCall = null;
 		this.closed = false;
 		this.channel = null;
+		this.isPeerJS = this.signalingClient?.mode === 'peerjs';
 
-		// Bind signal handler to instance
+		if (this.isPeerJS) {
+			this.channel = { readyState: 'open' };
+			this.setupPeerJSEvents();
+			return;
+		}
+
+		// Socket.IO Native WebRTC RTCPeerConnection fallback
+		this.pendingIce = [];
+		this.remoteDescriptionSet = false;
 		this.handleSignal = this.handleSignal.bind(this);
 
 		const iceServers = [
@@ -30,8 +38,6 @@ export class PeerConnection {
 		];
 
 		this.pc = new RTCPeerConnection({ iceServers });
-
-		// Pre-create Audio Transceiver for bidirectional voice chat
 		this.audioTransceiver = this.pc.addTransceiver('audio', { direction: 'sendrecv' });
 
 		this.pc.onicecandidate = ({ candidate }) => {
@@ -40,43 +46,15 @@ export class PeerConnection {
 			}
 		};
 
-		// Remote audio track handler
 		this.pc.ontrack = (event) => {
-			console.log('[WebRTC Audio] Remote track received:', event.track.kind, event.track.id);
-
 			if (event.track.kind === 'audio') {
-				// Construct or use stream safely
-				const stream =
-					(event.streams && event.streams[0]) || new MediaStream([event.track]);
-
-				if (this.remoteAudio) {
-					this.remoteAudio.srcObject = stream;
-					this.remoteAudio.muted = false;
-					this.remoteAudio.volume = 1.0;
-					this.remoteAudio.play().then(() => {
-						console.log('[WebRTC Audio] Remote audio playback active');
-					}).catch((err) => {
-						console.warn('[WebRTC Audio] Autoplay pending user interaction:', err);
-					});
-				}
-
-				event.track.onunmute = () => {
-					console.log('[WebRTC Audio] Remote track unmuted, playing audio');
-					if (this.remoteAudio) {
-						this.remoteAudio.play().catch(() => {});
-					}
-				};
-
-				event.track.onmute = () => {
-					console.log('[WebRTC Audio] Remote track muted');
-				};
+				const stream = (event.streams && event.streams[0]) || new MediaStream([event.track]);
+				this.playRemoteStream(stream);
 			}
 		};
 
 		this.pc.onconnectionstatechange = () => {
-			const state = this.pc.connectionState;
-			console.log('WebRTC connection state:', state);
-			this.onConnectionStateChange?.(state);
+			this.onConnectionStateChange?.(this.pc.connectionState);
 		};
 
 		this.pc.ondatachannel = (event) => {
@@ -87,6 +65,73 @@ export class PeerConnection {
 			this.signalingClient.on('signal', this.handleSignal);
 		} else if (this.socket) {
 			this.socket.on('rtc:signal', this.handleSignal);
+		}
+	}
+
+	setupPeerJSEvents() {
+		const attachConn = (conn) => {
+			if (!conn) return;
+
+			conn.on('data', (data) => {
+				this.onData?.(data);
+			});
+
+			conn.on('close', () => {
+				console.log('[PeerConnection] PeerJS channel closed');
+				if (this.channel) this.channel.readyState = 'closed';
+				this.onChannelStateChange?.('close');
+				this.onConnectionStateChange?.('disconnected');
+			});
+
+			conn.on('error', (err) => {
+				console.warn('[PeerConnection] PeerJS channel error:', err);
+			});
+
+			if (conn.open) {
+				this.channel = { readyState: 'open' };
+				setTimeout(() => {
+					this.onChannelStateChange?.('open');
+					this.onConnectionStateChange?.('connected');
+				}, 50);
+			} else {
+				conn.on('open', () => {
+					this.channel = { readyState: 'open' };
+					this.onChannelStateChange?.('open');
+					this.onConnectionStateChange?.('connected');
+				});
+			}
+		};
+
+		if (this.signalingClient?.activeConn) {
+			attachConn(this.signalingClient.activeConn);
+		}
+
+		this.signalingClient?.on('activeConnReady', (conn) => {
+			attachConn(conn);
+		});
+
+		// Handle incoming audio call
+		if (this.signalingClient?.peer) {
+			this.signalingClient.peer.on('call', (call) => {
+				console.log('[PeerJS Audio] Incoming voice call received');
+				this.activeCall = call;
+				call.answer(this.localAudioStream || undefined);
+				call.on('stream', (remoteStream) => {
+					this.playRemoteStream(remoteStream);
+				});
+			});
+		}
+	}
+
+	playRemoteStream(stream) {
+		console.log('[WebRTC Audio] Remote audio stream received');
+		if (this.remoteAudio) {
+			this.remoteAudio.srcObject = stream;
+			this.remoteAudio.muted = false;
+			this.remoteAudio.volume = 1.0;
+			this.remoteAudio.play().catch((err) => {
+				console.warn('[WebRTC Audio] Autoplay pending user interaction:', err);
+			});
 		}
 	}
 
@@ -102,12 +147,10 @@ export class PeerConnection {
 		this.channel = channel;
 
 		channel.onopen = () => {
-			console.log('WebRTC game data channel opened');
 			this.onChannelStateChange?.('open');
 		};
 
 		channel.onclose = () => {
-			console.log('WebRTC game data channel closed');
 			this.onChannelStateChange?.('close');
 		};
 
@@ -126,7 +169,14 @@ export class PeerConnection {
 	}
 
 	async startAsHost() {
-		// Host creates the data channel
+		if (this.isPeerJS) {
+			// In PeerJS, the connection is already direct P2P!
+			this.channel = { readyState: 'open' };
+			this.onChannelStateChange?.('open');
+			this.onConnectionStateChange?.('connected');
+			return;
+		}
+
 		const dataChannel = this.pc.createDataChannel('game-input', {
 			ordered: false,
 			maxRetransmits: 0,
@@ -139,7 +189,7 @@ export class PeerConnection {
 	}
 
 	async handleSignal(message) {
-		if (!message || this.closed) return;
+		if (!message || this.closed || this.isPeerJS) return;
 
 		try {
 			if (message.type === 'offer') {
@@ -178,36 +228,79 @@ export class PeerConnection {
 	}
 
 	send(message) {
-		if (!this.channel || this.channel.readyState !== 'open') {
+		if (this.closed) return false;
+
+		if (this.isPeerJS) {
+			const conn = this.signalingClient?.activeConn;
+			if (conn && conn.open) {
+				try {
+					conn.send(message);
+					return true;
+				} catch (err) {
+					console.warn('[PeerJS] Failed to send message:', err);
+					return false;
+				}
+			}
 			return false;
 		}
-		try {
-			this.channel.send(JSON.stringify(message));
-			return true;
-		} catch (err) {
-			console.warn('Failed to send game message:', err);
-			return false;
+
+		if (this.channel?.readyState === 'open') {
+			try {
+				this.channel.send(JSON.stringify(message));
+				return true;
+			} catch (err) {
+				console.warn('Failed to send message over data channel:', err);
+				return false;
+			}
 		}
+		return false;
 	}
 
-	getAudioTransceiver() {
-		// Find transceiver that is active and negotiated (mid !== null)
-		return (
-			this.pc.getTransceivers().find(
-				(t) =>
-					t.mid !== null &&
-					(t.receiver.track.kind === 'audio' || t.sender.track?.kind === 'audio')
-			) ||
-			this.pc.getTransceivers().find(
-				(t) => t.receiver.track.kind === 'audio' || t.sender.track?.kind === 'audio'
-			)
-		);
-	}
-
-	// Microphone Voice Chat
 	async setAudio(enabled = false) {
+		if (this.isPeerJS) {
+			const oldStream = this.localAudioStream;
+			if (!enabled) {
+				if (this.activeCall) {
+					try { this.activeCall.close(); } catch {}
+					this.activeCall = null;
+				}
+				oldStream?.getTracks().forEach((track) => track.stop());
+				this.localAudioStream = null;
+				return false;
+			}
+
+			try {
+				const stream = await navigator.mediaDevices.getUserMedia({
+					audio: {
+						echoCancellation: true,
+						noiseSuppression: true,
+						autoGainControl: true,
+					},
+					video: false,
+				}).catch(() => navigator.mediaDevices.getUserMedia({ audio: true, video: false }));
+
+				this.localAudioStream = stream;
+
+				const targetPeerId = this.signalingClient?.targetPeerId;
+				if (targetPeerId && this.signalingClient?.peer) {
+					console.log('[PeerJS Audio] Calling remote peer for voice chat:', targetPeerId);
+					const call = this.signalingClient.peer.call(targetPeerId, stream);
+					this.activeCall = call;
+					call.on('stream', (remoteStream) => {
+						this.playRemoteStream(remoteStream);
+					});
+				}
+				return true;
+			} catch (err) {
+				console.warn('[PeerJS Audio] Mic permission or stream error:', err);
+				throw err;
+			}
+		}
+
 		const oldStream = this.localAudioStream;
-		const audioTransceiver = this.getAudioTransceiver();
+		const audioTransceiver = this.pc.getTransceivers().find(
+			(t) => t.receiver.track.kind === 'audio' || t.sender.track?.kind === 'audio'
+		);
 
 		if (!enabled) {
 			if (audioTransceiver?.sender) {
@@ -219,23 +312,14 @@ export class PeerConnection {
 		}
 
 		try {
-			let stream;
-			try {
-				stream = await navigator.mediaDevices.getUserMedia({
-					audio: {
-						echoCancellation: true,
-						noiseSuppression: true,
-						autoGainControl: true,
-					},
-					video: false,
-				});
-			} catch {
-				// Fallback to basic audio constraint if enhanced constraints fail
-				stream = await navigator.mediaDevices.getUserMedia({
-					audio: true,
-					video: false,
-				});
-			}
+			const stream = await navigator.mediaDevices.getUserMedia({
+				audio: {
+					echoCancellation: true,
+					noiseSuppression: true,
+					autoGainControl: true,
+				},
+				video: false,
+			}).catch(() => navigator.mediaDevices.getUserMedia({ audio: true, video: false }));
 
 			const audioTrack = stream.getAudioTracks()[0] ?? null;
 
@@ -248,42 +332,30 @@ export class PeerConnection {
 
 			this.localAudioStream = stream;
 			oldStream?.getTracks().forEach((track) => track.stop());
-			console.log('[WebRTC Audio] Local microphone track active:', audioTrack?.label);
 			return true;
-		} catch (error) {
-			console.error('Microphone permission or capture error:', error);
-			throw error;
+		} catch (err) {
+			console.warn('Microphone access denied or error:', err);
+			throw err;
 		}
 	}
 
 	close() {
 		this.closed = true;
-
-		if (this.signalingClient) {
-			this.signalingClient.off('signal', this.handleSignal);
-		} else if (this.socket) {
-			this.socket.off('rtc:signal', this.handleSignal);
+		if (this.activeCall) {
+			try { this.activeCall.close(); } catch {}
+			this.activeCall = null;
 		}
-
+		if (this.localAudioStream) {
+			this.localAudioStream.getTracks().forEach((track) => track.stop());
+			this.localAudioStream = null;
+		}
 		if (this.channel) {
-			try {
-				this.channel.close();
-			} catch {}
+			try { this.channel.close(); } catch {}
 			this.channel = null;
 		}
-
-		this.localAudioStream?.getTracks().forEach((track) => track.stop());
-		this.localAudioStream = null;
-
-		try {
-			this.pc.close();
-		} catch {}
-
-		if (this.remoteAudio && this.remoteAudio.srcObject) {
-			try {
-				this.remoteAudio.srcObject.getTracks().forEach((track) => track.stop());
-			} catch {}
-			this.remoteAudio.srcObject = null;
+		if (this.pc) {
+			try { this.pc.close(); } catch {}
+			this.pc = null;
 		}
 	}
 }

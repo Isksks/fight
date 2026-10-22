@@ -2,8 +2,8 @@
  * SignalingClient
  * 
  * Supports both:
- * 1. Serverless P2P signaling via PeerJS free cloud (zero-backend, works on GitHub Pages)
- * 2. Socket.IO signaling server (when deployed to Node.js backend or localhost)
+ * 1. Serverless P2P direct data channel & media via PeerJS free cloud (zero-backend, works on GitHub Pages)
+ * 2. Socket.IO signaling server (when deployed to Node.js backend)
  */
 export class SignalingClient {
 	constructor() {
@@ -11,6 +11,7 @@ export class SignalingClient {
 		this.socket = null;
 		this.peer = null;
 		this.activeConn = null;
+		this.targetPeerId = null;
 		this.currentRoom = null;
 		this.callbacks = {
 			connect: [],
@@ -19,6 +20,7 @@ export class SignalingClient {
 			peerLeft: [],
 			signal: [],
 			error: [],
+			activeConnReady: [],
 		};
 	}
 
@@ -81,7 +83,6 @@ export class SignalingClient {
 		}
 
 		console.log('[Signaling] Serverless P2P mode active (PeerJS cloud)');
-		// Emit connect so the lobby status updates to ready
 		setTimeout(() => {
 			this.emitEvent('connect', { mode: 'peerjs' });
 		}, 100);
@@ -172,19 +173,22 @@ export class SignalingClient {
 
 			this.peer.on('connection', (conn) => {
 				this.activeConn = conn;
-				conn.on('open', () => {
-					console.log(`[PeerJS] Opponent joined room ${code}`);
+				this.targetPeerId = conn.peer;
+
+				const onConnReady = () => {
+					console.log(`[PeerJS] Opponent joined room ${code} (peer: ${conn.peer})`);
+					this.emitEvent('activeConnReady', conn);
 					this.emitEvent('peerJoined', {
 						playerId: 'player-2',
 						playerNumber: 2,
 					});
-				});
+				};
 
-				conn.on('data', (data) => {
-					if (data && data.type) {
-						this.emitEvent('signal', data);
-					}
-				});
+				if (conn.open) {
+					onConnReady();
+				} else {
+					conn.on('open', onConnReady);
+				}
 
 				conn.on('close', () => {
 					console.log('[PeerJS] Opponent signaling channel closed');
@@ -233,6 +237,7 @@ export class SignalingClient {
 
 			const myPeerId = `sf2-cli-${code}-${Math.random().toString(36).substring(2, 7)}`;
 			const targetHostPeerId = `sf2-room-${code}`;
+			this.targetPeerId = targetHostPeerId;
 
 			this.peer = new window.Peer(myPeerId, {
 				debug: 0,
@@ -249,14 +254,14 @@ export class SignalingClient {
 
 			this.peer.on('open', () => {
 				console.log(`[PeerJS] Connecting to host: ${targetHostPeerId}`);
-				const conn = this.peer.connect(targetHostPeerId, { reliable: true });
+				const conn = this.peer.connect(targetHostPeerId, { reliable: false });
 				this.activeConn = conn;
 
 				const timeoutId = setTimeout(() => {
 					if (!settled) {
 						settled = true;
 						try { conn.close(); } catch {}
-						reject(new Error(`Room "${code}" not found or host is offline.`));
+						reject(new Error(`Room "${code}" not found. Ensure host created the room and has the tab open.`));
 					}
 				}, 12000);
 
@@ -265,6 +270,7 @@ export class SignalingClient {
 						settled = true;
 						clearTimeout(timeoutId);
 						console.log(`[PeerJS] Successfully connected to host in room ${code}`);
+						this.emitEvent('activeConnReady', conn);
 						const sessionToken = 'st_' + Math.random().toString(36).substring(2, 10);
 						resolve({
 							code,
@@ -272,12 +278,6 @@ export class SignalingClient {
 							playerNumber: 2,
 							sessionToken,
 						});
-					}
-				});
-
-				conn.on('data', (data) => {
-					if (data && data.type) {
-						this.emitEvent('signal', data);
 					}
 				});
 
@@ -331,6 +331,7 @@ export class SignalingClient {
 
 		this.cleanupPeer();
 		this.currentRoom = null;
+		this.targetPeerId = null;
 	}
 
 	cleanupPeer() {
